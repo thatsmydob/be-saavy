@@ -29,6 +29,6 @@
       "@/services/*": ["./components/services/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx"],
+  "include": ["App.tsx", "main.tsx", "components/**/*.ts", "components/**/*.tsx"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

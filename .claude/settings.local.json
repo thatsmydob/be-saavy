@@ -5,7 +5,13 @@
       "Bash(npm run dev:*)",
       "Bash(sed -i 's/@radix-ui\\/react-[a-z-]*@[0-9.]*/&/g; s/@[0-9.]*//g' components/ui/*.tsx)",
       "Bash(find components -name \"*.tsx\" -exec grep -l \"class-variance-authority@[0-9]\" {} ;)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(git push -u origin main)",
+      "Bash(git remote set-url:*)",
+      "Bash(git config:*)",
+      "Bash(git push:*)",
+      "Bash(rm:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []

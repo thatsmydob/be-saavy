@@ -11,8 +11,6 @@ import {
   AnimatePresence,
   useAnimation,
   PanInfo,
-  useMotionValue,
-  useTransform,
 } from "framer-motion";
 import {
   Home,
@@ -24,11 +22,7 @@ import {
   RefreshCw,
   Bell,
   Zap,
-  Star,
   Award,
-  Plus,
-  ChevronDown,
-  Sparkles,
   Sun,
   Moon,
   Coffee,
@@ -39,7 +33,6 @@ import { toast } from "sonner";
 import { cn } from "./components/ui/utils";
 import { HomeScreen } from "./components/HomeScreen";
 import { Button } from "./components/ui/button";
-import { Badge } from "./components/ui/badge";
 import { Skeleton } from "./components/ui/skeleton";
 import {
   Tooltip,
