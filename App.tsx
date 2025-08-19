@@ -53,6 +53,7 @@ import {
   SheetTrigger,
 } from "./components/ui/sheet";
 import { Card, CardContent } from "./components/ui/card";
+import { NotificationService } from "./components/services/NotificationService";
 
 // Lazy load screens for performance
 const AIAssistantScreen = lazy(() =>
