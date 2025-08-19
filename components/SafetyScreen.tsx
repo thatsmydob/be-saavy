@@ -26,14 +26,14 @@ import { Checkbox } from './ui/checkbox';
 import { Progress } from './ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { ProductScanner } from './ProductScanner';
-import { ProductRecalls } from './ProductRecalls';
+import { SimplifiedRecallFlow } from './SimplifiedRecallFlow';
 import { AIService, Product, SafetyAssessment } from './services/aiService';
 import { cn } from './ui/utils';
 
 export function SafetyScreen() {
   const [checkedItems, setCheckedItems] = useState<string[]>([]);
   const [showScanner, setShowScanner] = useState(false);
-  const [showRecalls, setShowRecalls] = useState(false);
+  const [showRecallFlow, setShowRecallFlow] = useState(false);
   const [recentScans, setRecentScans] = useState<Array<{product: Product, assessment: SafetyAssessment}>>([]);
   const [overallSafetyScore, setOverallSafetyScore] = useState(85);
   const [smartAlertsExpanded, setSmartAlertsExpanded] = useState(true);
@@ -116,6 +116,11 @@ export function SafetyScreen() {
   const handleProductScanned = (product: Product, assessment: SafetyAssessment) => {
     setRecentScans(prev => [{product, assessment}, ...prev.slice(0, 2)]);
   };
+
+  const handleRecallHandled = (recallId: string) => {
+  console.log(`Recall ${recallId} has been handled`);
+  // You can add logic here to update UI, send analytics, etc.
+};
 
   // Enhanced checklists with AI-generated priorities
   const homeChecklist = [
@@ -308,7 +313,7 @@ export function SafetyScreen() {
               </div>
             </div>
             <Button 
-              onClick={() => setShowRecalls(true)}
+              onClick={() => setShowRecallFlow(true)}
               size="sm"
               className="bg-orange-600 hover:bg-orange-700 text-white flex-shrink-0"
             >
@@ -684,9 +689,10 @@ export function SafetyScreen() {
       />
 
       {/* Product Recalls Modal */}
-      <ProductRecalls 
-        isOpen={showRecalls}
-        onClose={() => setShowRecalls(false)}
+      <SimplifiedRecallFlow
+        isOpen={showRecallFlow}
+        onClose={() => setShowRecallFlow(false)}
+        onRecallHandled={handleRecallHandled}
       />
     </div>
   );
