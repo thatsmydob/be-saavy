@@ -135,16 +135,16 @@ export class NotificationService {
     
     // Save to localStorage for persistence
     localStorage.setItem('be-saavy-notification-preferences', JSON.stringify(this.preferences));
-      // ADD THESE LINES to sync with smart timing:
-  if (newPreferences.high?.quietHours) {
-    this.smartTiming.updateUserBehavior({
-      quietPeriods: [{
-        start: this.preferences.high.quietHours.start,
-        end: this.preferences.high.quietHours.end
-      }]
-    });
-  }
-}
+    
+    // Sync with smart timing
+    if (newPreferences.high?.quietHours) {
+      this.smartTiming.updateUserBehavior({
+        quietPeriods: [{
+          start: this.preferences.high.quietHours.start,
+          end: this.preferences.high.quietHours.end
+        }]
+      });
+    }
   }
 
   public updateContext(newContext: Partial<NotificationContext>): void {
@@ -204,49 +204,48 @@ export class NotificationService {
   }
 
   private calculateOptimalDeliveryTime(urgencyLevel: 'critical' | 'high' | 'medium'): { time: Date; reasoning: string; confidence: number } {
-  // Critical: always immediate
-  if (urgencyLevel === 'critical') {
-    return {
-      time: new Date(),
-      reasoning: 'Critical safety alerts are delivered immediately',
-      confidence: 1.0
-    };
-  }
+    // Critical: always immediate
+    if (urgencyLevel === 'critical') {
+      return {
+        time: new Date(),
+        reasoning: 'Critical safety alerts are delivered immediately',
+        confidence: 1.0
+      };
+    }
+    
     const optimalResult = this.smartTiming.predictOptimalTime(urgencyLevel);
 
-     
-  // Apply user preference overrides
-  if (urgencyLevel === 'high') {
-    switch (this.preferences.high.schedule) {
-      case 'immediate':
-        if (!this.isInQuietHours()) {
+    // Apply user preference overrides
+    if (urgencyLevel === 'high') {
+      switch (this.preferences.high.schedule) {
+        case 'immediate':
+          if (!this.isInQuietHours()) {
+            return {
+              time: new Date(),
+              reasoning: 'User preference: immediate delivery outside quiet hours',
+              confidence: 0.8
+            };
+          }
+          break;
+        case 'evening_digest':
+          const eveningTime = this.getEveningDigestTime();
           return {
-            time: new Date(),
-            reasoning: 'User preference: immediate delivery outside quiet hours',
-            confidence: 0.8
+            time: eveningTime,
+            reasoning: 'User preference: evening digest delivery',
+            confidence: 0.9
           };
-        }
-        break;
-      case 'evening_digest':
-        const eveningTime = this.getEveningDigestTime();
-        return {
-          time: eveningTime,
-          reasoning: 'User preference: evening digest delivery',
-          confidence: 0.9
-        };
-      case 'next_optimal':
-      default:
-        // Use AI recommendation
-        break;
+        case 'next_optimal':
+        default:
+          // Use AI recommendation
+          break;
+      }
     }
-  }
 
-  return {
-    time: optimalResult.recommendedTime,
-    reasoning: optimalResult.reasoning,
-    confidence: optimalResult.confidence
-  };
-}
+    return {
+      time: optimalResult.recommendedTime,
+      reasoning: optimalResult.reasoning,
+      confidence: optimalResult.confidence
+    };
   }
 
   private getNextOptimalTime(): Date {
@@ -319,21 +318,19 @@ export class NotificationService {
     }
   }
 
-  // REPLACE your existing scheduleRecallNotification method with this:
-    public async scheduleRecallNotification(
-      recallId: string,
-      urgencyLevel: 'critical' | 'high' | 'medium',
-      productName: string,
-      hazardDescription: string
-): Promise<boolean> {
-  // Check if this urgency level is enabled
-  if (urgencyLevel === 'high' && !this.preferences.high.enabled) return false;
-  if (urgencyLevel === 'medium' && !this.preferences.medium.enabled) return false;
-  // Critical is always enabled
+  public async scheduleRecallNotification(
+    recallId: string,
+    urgencyLevel: 'critical' | 'high' | 'medium',
+    productName: string,
+    hazardDescription: string
+  ): Promise<boolean> {
+    // Check if this urgency level is enabled
+    if (urgencyLevel === 'high' && !this.preferences.high.enabled) return false;
+    if (urgencyLevel === 'medium' && !this.preferences.medium.enabled) return false;
+    // Critical is always enabled
 
     const timingResult = this.calculateOptimalDeliveryTime(urgencyLevel);
     const personalizedMessage = this.generatePersonalizedMessage(urgencyLevel, productName);
-  
     
     const notification: ScheduledNotification = {
       id: `recall-${recallId}-${Date.now()}`,
@@ -345,29 +342,28 @@ export class NotificationService {
       personalizedMessage,
       actionUrl: `/recalls/${recallId}`,
       priority: urgencyLevel === 'critical' ? 10 : urgencyLevel === 'high' ? 7 : 4,
+      timingReasoning: timingResult.reasoning,
+      confidence: timingResult.confidence
+    };
     
-    // ADD THESE SMART TIMING FIELDS:
-    timingReasoning: timingResult.reasoning,
-    confidence: timingResult.confidence
-  };
     this.scheduledNotifications.set(notification.id, notification);
 
     // If immediate delivery, send now
-    if (deliveryTime <= new Date()) {
+    if (timingResult.time <= new Date()) {
       return this.sendNotification(notification);
     }
 
     // Schedule for later
-  const delay = timingResult.time.getTime() - Date.now();
-  setTimeout(() => {
-    // Double-check if we should still send (user might have handled it)
-    if (this.smartTiming.shouldDeliverNow(timingResult.time, urgencyLevel)) {
-      this.sendNotification(notification);
-    }
-    this.scheduledNotifications.delete(notification.id);
-  }, delay);
+    const delay = timingResult.time.getTime() - Date.now();
+    setTimeout(() => {
+      // Double-check if we should still send (user might have handled it)
+      if (this.smartTiming.shouldDeliverNow(timingResult.time, urgencyLevel)) {
+        this.sendNotification(notification);
+      }
+      this.scheduledNotifications.delete(notification.id);
+    }, delay);
 
-  return true;
+    return true;
   }
 
   private async sendNotification(notification: ScheduledNotification): Promise<boolean> {
@@ -444,9 +440,7 @@ export class NotificationService {
     return this.scheduledNotifications.delete(notificationId);
   }
 
-  // ADD these new methods at the end of your NotificationService class (before the closing brace):
-
-public recordUserAppUsage(): void {
+  public recordUserAppUsage(): void {
   const now = new Date();
   this.context.lastAppUsage = now;
   this.smartTiming.recordAppUsage(now);
