@@ -28,10 +28,15 @@ import {
   Coffee,
   BookOpen,
   Users,
+  ShoppingCart,
+  Brain,
+  DollarSign,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "./components/ui/utils";
 import { HomeScreen } from "./components/HomeScreen";
+import { SmartShopping } from "./components/SmartShopping";
+import { DailyInsights } from "./components/DailyInsights";
 import { Button } from "./components/ui/button";
 import { Skeleton } from "./components/ui/skeleton";
 import {
@@ -342,6 +347,8 @@ type Screen =
   | "safety"
   | "baby"
   | "lifestyle"
+  | "shopping"
+  | "insights"
   | "settings";
 
 // Enhanced navigation with tooltips and haptic feedback
@@ -415,6 +422,34 @@ const navigation = [
       "Self-care tips, mental health support, and wellness tracking",
     supportiveMessage: "You matter too",
     shortcut: "⌘5",
+  },
+  {
+    id: "shopping",
+    label: "Shopping",
+    icon: ShoppingCart,
+    color: "text-green-500",
+    bgColor: "bg-green-50",
+    gradientFrom: "from-green-100",
+    gradientTo: "to-green-50",
+    description: "Smart deals and price tracking",
+    detailedDescription:
+      "AI-powered shopping recommendations and price alerts for baby essentials",
+    supportiveMessage: "Save money, stay safe",
+    shortcut: "⌘6",
+  },
+  {
+    id: "insights",
+    label: "Insights",
+    icon: Brain,
+    color: "text-indigo-500",
+    bgColor: "bg-indigo-50",
+    gradientFrom: "from-indigo-100",
+    gradientTo: "to-indigo-50",
+    description: "Personalized daily guidance",
+    detailedDescription:
+      "AI-generated insights combining safety, budget, and developmental guidance",
+    supportiveMessage: "Smart parenting made simple",
+    shortcut: "⌘7",
   },
 ] as const;
 
@@ -667,6 +702,45 @@ export default function App() {
             >
               <LifestyleScreen />
             </Suspense>
+          );
+        case "shopping":
+          return (
+            <SmartShopping 
+              babyAge={6}
+              monthlyBudget={400}
+              preferences={{
+                organic: false,
+                sustainable: false,
+                budget_conscious: true
+              }}
+            />
+          );
+        case "insights":
+          return (
+            <DailyInsights 
+              babyProfile={{
+                id: "demo-profile",
+                name: "Emma",
+                birthDate: "2024-07-18",
+                ageInMonths: 6,
+                feedingType: "combination",
+                allergies: [],
+                specialNeeds: [],
+                parentPreferences: {
+                  budget: "moderate",
+                  organic: false,
+                  sustainable: false,
+                  brand_conscious: false
+                },
+                ownedProducts: []
+              }}
+              onRecommendationClick={(rec) => {
+                toast.success("Recommendation clicked", {
+                  description: rec.title,
+                  duration: 2000
+                });
+              }}
+            />
           );
         case "settings":
           return (
