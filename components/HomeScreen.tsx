@@ -15,28 +15,45 @@ import {
   Scan,
   Sparkles,
   Brain,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Alert, AlertDescription } from './ui/alert';
 import { ProductScanner } from './ProductScanner';
+import { SimplifiedRecallFlow } from './SimplifiedRecallFlow';
+import { Shield, AlertTriangle, ShieldAlert } from 'lucide-react';
+
 import { AIService, SmartInsight } from './services/aiService';
 import { cn } from './ui/utils';
 
-export function HomeScreen() {
+interface HomeScreenProps {
+  currentTime?: Date;
+  parentingStreak?: number;
+  recentMilestone?: string;
+  onScreenChange?: (screen: string) => void;
+}
+
+export function HomeScreen({ 
+  currentTime, 
+  parentingStreak, 
+  recentMilestone, 
+  onScreenChange 
+}: HomeScreenProps) {
   const [showAllInsights, setShowAllInsights] = useState(false);
   const [showAllActions, setShowAllActions] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [showRecallFlow, setShowRecallFlow] = useState(false);
   const [smartInsights, setSmartInsights] = useState<SmartInsight[]>([]);
   const [dailyTip, setDailyTip] = useState('');
   const [recallSummary, setRecallSummary] = useState({ urgent: 0, recent: 0 });
   
-  const currentTime = new Date().getHours();
-  const isNight = currentTime >= 18 || currentTime <= 6;
-  const timeOfDay = isNight ? 'evening' : currentTime < 12 ? 'morning' : 'afternoon';
+  const currentHour = currentTime?.getHours() || new Date().getHours();
+  const isNight = currentHour >= 18 || currentHour <= 6;
+  const timeOfDay = isNight ? 'evening' : currentHour < 12 ? 'morning' : 'afternoon';
   
-  // Load AI insights on component mount
+  // Load AI insights and recall data on component mount
   useEffect(() => {
     const profile = AIService.getBabyProfile();
     const insights = AIService.generateSmartInsights(profile);
@@ -47,7 +64,18 @@ export function HomeScreen() {
     setDailyTip(tip);
     setRecallSummary({ urgent: summary.urgent, recent: summary.recent });
   }, []);
+
+  // Get urgent recalls for home screen integration
+  const urgentRecalls = AIService.getUrgentRecalls();
+  const hasUrgentRecalls = urgentRecalls.length > 0;
   
+  const handleRecallHandled = (recallId: string) => {
+    console.log(`Recall ${recallId} handled from HomeScreen`);
+    // Update recall summary after handling
+    const updatedSummary = AIService.getRecallSummary();
+    setRecallSummary({ urgent: updatedSummary.urgent, recent: updatedSummary.recent });
+  };
+
   const todaysStats = [
     { 
       icon: Droplets, 
@@ -155,21 +183,63 @@ export function HomeScreen() {
 
   return (
     <div className="p-6 space-y-6 pb-20">
-      {/* Warm Welcome Section */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          {isNight ? (
-            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-              <Moon className="w-4 h-4 text-purple-600" />
+      {/* URGENT RECALL BANNER - Critical Safety Issues */}
+      {hasUrgentRecalls && (
+        <Alert className="border-red-500 bg-red-50 shadow-lg animate-pulse">
+          <AlertTriangle className="h-5 w-5 text-red-600" />
+          <AlertDescription className="text-red-800">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="font-semibold">URGENT: Product Safety Alert</span>
+                <br />
+                {urgentRecalls.length} critical recall{urgentRecalls.length === 1 ? '' : 's'} affecting Emma's safety
+              </div>
+              <Button 
+                onClick={() => setShowRecallFlow(true)}
+                className="bg-red-600 hover:bg-red-700 text-white ml-4"
+                size="sm"
+              >
+                Handle Now
+              </Button>
             </div>
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
-              <Sun className="w-4 h-4 text-yellow-600" />
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* HEADER WITH RECALL NOTIFICATION BADGE */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {isNight ? (
+              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                <Moon className="w-4 h-4 text-purple-600" />
+              </div>
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
+                <Sun className="w-4 h-4 text-yellow-600" />
+              </div>
+            )}
+            <p className="text-muted-foreground">
+              Good {timeOfDay}, Sarah
+            </p>
+          </div>
+          
+          {/* RECALL NOTIFICATION BADGE */}
+          {recallSummary.urgent > 0 && (
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowRecallFlow(true)}
+                className="p-2"
+              >
+                <Shield className="w-6 h-6 text-red-600" />
+                <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                  {recallSummary.urgent}
+                </div>
+              </Button>
             </div>
           )}
-          <p className="text-muted-foreground">
-            Good {timeOfDay}, Sarah
-          </p>
         </div>
         
         <div className="space-y-1">
@@ -215,7 +285,7 @@ export function HomeScreen() {
         </div>
       </Card>
 
-      {/* AI-Powered Smart Insights */}
+      {/* URGENT RECALL INSIGHTS - Integrated into Smart Insights */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -242,19 +312,40 @@ export function HomeScreen() {
         </div>
         
         <div className="space-y-3">
-          {displayedInsights.map((insight) => (
+          {/* PRIORITY: Show urgent recall insights first */}
+          {displayedInsights
+            .sort((a, b) => {
+              // Safety insights with high priority first
+              if (a.type === 'safety' && a.priority === 'high') return -1;
+              if (b.type === 'safety' && b.priority === 'high') return 1;
+              return 0;
+            })
+            .map((insight) => (
             <Card key={insight.id} className={cn(
               "p-5 bg-gradient-to-r border-0 shadow-sm hover:shadow-md transition-all duration-300",
-              getInsightColor(insight.priority)
+              insight.type === 'safety' && insight.priority === 'high' 
+                ? 'from-red-50 via-orange-50 to-pink-50 border-red-200' 
+                : getInsightColor(insight.priority)
             )}>
               <div className="flex items-start gap-4">
                 <div className="text-2xl flex-shrink-0 animate-gentle-bounce">
-                  {getInsightIcon(insight.type)}
+                  {insight.type === 'safety' && insight.priority === 'high' ? (
+                    <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                      <ShieldAlert className="w-4 h-4 text-red-600" />
+                    </div>
+                  ) : (
+                    getInsightIcon(insight.type)
+                  )}
                 </div>
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center gap-2">
                     <h4 className="text-sm font-semibold text-foreground">{insight.title}</h4>
-                    {insight.priority === 'high' && (
+                    {insight.priority === 'high' && insight.type === 'safety' && (
+                      <Badge variant="destructive" className="text-xs">
+                        Critical
+                      </Badge>
+                    )}
+                    {insight.priority === 'high' && insight.type !== 'safety' && (
                       <Badge variant="secondary" className="bg-orange-100 text-orange-700 text-xs">
                         Important
                       </Badge>
@@ -267,7 +358,17 @@ export function HomeScreen() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className="text-primary hover:text-primary-light p-0 h-auto text-sm"
+                      className={cn(
+                        "p-0 h-auto text-sm",
+                        insight.type === 'safety' && insight.priority === 'high'
+                          ? "text-red-600 hover:text-red-700 font-medium"
+                          : "text-primary hover:text-primary-light"
+                      )}
+                      onClick={() => {
+                        if (insight.type === 'safety') {
+                          setShowRecallFlow(true);
+                        }
+                      }}
                     >
                       {insight.action} <ChevronRight className="w-3 h-3 ml-1" />
                     </Button>
@@ -279,63 +380,7 @@ export function HomeScreen() {
         </div>
       </div>
 
-      {/* Safety Alert Summary */}
-      {(recallSummary.urgent > 0 || recallSummary.recent > 0) && (
-        <Card className="p-4 bg-gradient-to-r from-orange-50 via-red-50 to-pink-50 border-orange-200">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-orange-600" />
-              <h3 className="text-lg font-semibold text-orange-800">Safety Alerts</h3>
-              <Badge variant="secondary" className="bg-orange-100 text-orange-700 text-xs">
-                Product Recalls
-              </Badge>
-            </div>
-            
-            <div className="space-y-2">
-              {recallSummary.urgent > 0 && (
-                <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-red-600" />
-                    <span className="text-sm font-medium text-red-800">
-                      {recallSummary.urgent} urgent recall{recallSummary.urgent === 1 ? '' : 's'}
-                    </span>
-                  </div>
-                  <Button 
-                    size="sm" 
-                    className="bg-red-600 hover:bg-red-700 text-white text-xs"
-                  >
-                    Review Now
-                  </Button>
-                </div>
-              )}
-              
-              {recallSummary.recent > 0 && (
-                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-orange-600" />
-                    <span className="text-sm font-medium text-orange-800">
-                      {recallSummary.recent} new recall{recallSummary.recent === 1 ? '' : 's'} this week
-                    </span>
-                  </div>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    className="border-orange-300 text-orange-700 hover:bg-orange-100 text-xs"
-                  >
-                    View Details
-                  </Button>
-                </div>
-              )}
-            </div>
-            
-            <p className="text-xs text-orange-700 italic">
-              💡 Stay informed about product safety to keep Emma protected
-            </p>
-          </div>
-        </Card>
-      )}
-
-      {/* Quick Actions - Enhanced with AI Features */}
+      {/* Quick Actions Grid */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-foreground">Quick Actions</h3>
@@ -346,35 +391,34 @@ export function HomeScreen() {
               onClick={() => setShowAllActions(!showAllActions)}
               className="text-primary hover:text-primary-light"
             >
-              {showAllActions ? 'Show less' : 'More'}
-              <Plus className={cn(
+              {showAllActions ? 'Show less' : `${quickActions.length - 4} more`}
+              <ChevronDown className={cn(
                 "w-4 h-4 ml-1 transition-transform duration-300",
-                showAllActions && "rotate-45"
+                showAllActions && "rotate-180"
               )} />
             </Button>
           )}
         </div>
         
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           {displayedActions.map((action, index) => {
             const Icon = action.icon;
             return (
               <Card 
-                key={index}
-                className="p-4 hover:shadow-lg transition-all duration-300 cursor-pointer group touch-target border-0 bg-white/80 backdrop-blur-sm hover:scale-105 active:scale-95"
+                key={index} 
+                className="p-4 hover:shadow-md transition-all duration-300 cursor-pointer group"
                 onClick={action.action}
               >
-                <div className="space-y-3">
+                <div className="flex items-center gap-3">
                   <div className={cn(
-                    "w-12 h-12 rounded-2xl flex items-center justify-center transition-colors duration-300",
-                    action.bgColor,
-                    "group-hover:scale-110"
+                    "w-10 h-10 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110",
+                    action.bgColor
                   )}>
                     <Icon className={cn("w-5 h-5", action.color)} />
                   </div>
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-semibold text-foreground">{action.title}</h4>
-                    <p className="text-xs text-muted-foreground leading-tight">{action.subtitle}</p>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-medium text-foreground truncate">{action.title}</h4>
+                    <p className="text-xs text-muted-foreground truncate">{action.subtitle}</p>
                   </div>
                 </div>
               </Card>
@@ -383,46 +427,30 @@ export function HomeScreen() {
         </div>
       </div>
 
-      {/* AI-Generated Daily Tip */}
-      <Card className="p-6 bg-gradient-to-br from-warm-coral via-peach-cream to-gentle-green border-0 shadow-sm">
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white/80 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-orange-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">AI Daily Tip</h3>
-              <p className="text-xs text-muted-foreground">Personalized for Emma's development</p>
+      {/* Daily Tip */}
+      {dailyTip && (
+        <Card className="p-5 bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200">
+          <div className="flex items-start gap-3">
+            <div className="text-lg">💡</div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-foreground">Today's Tip</h4>
+              <p className="text-sm text-muted-foreground leading-relaxed">{dailyTip}</p>
             </div>
           </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {dailyTip}
-          </p>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-orange-700 hover:text-orange-600 p-0 h-auto text-sm font-medium"
-          >
-            Learn more about this stage <ChevronRight className="w-3 h-3 ml-1" />
-          </Button>
-        </div>
-      </Card>
-
-      {/* Encouraging Message */}
-      <div className="text-center py-4 space-y-2">
-        <p className="text-sm text-muted-foreground italic">
-          "You're doing an amazing job, Sarah. Every day with Emma is a gift." 💙
-        </p>
-      </div>
+        </Card>
+      )}
 
       {/* Product Scanner Modal */}
       <ProductScanner 
         isOpen={showScanner}
         onClose={() => setShowScanner(false)}
-        onProductScanned={(product, assessment) => {
-          console.log('Product scanned:', product, assessment);
-          // Could trigger notifications or add to inventory
-        }}
+      />
+
+      {/* Simplified Recall Flow Modal */}
+      <SimplifiedRecallFlow
+        isOpen={showRecallFlow}
+        onClose={() => setShowRecallFlow(false)}
+        onRecallHandled={handleRecallHandled}
       />
     </div>
   );

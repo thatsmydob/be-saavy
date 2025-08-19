@@ -242,7 +242,7 @@ const PremiumLoadingSpinner = ({
       "Almost there...",
       "Just a moment...",
     ];
-
+    
     const interval = setInterval(() => {
       setLoadingMessage(
         messages[Math.floor(Math.random() * messages.length)],
@@ -610,6 +610,19 @@ export default function App() {
       },
     });
   }, [currentScreen, floatingButtonControls]);
+  
+  // In your App.tsx or main component, track app usage:
+  useEffect(() => {
+    const notificationService = NotificationService.getInstance();
+    notificationService.recordUserAppUsage();
+}, []);
+
+
+// When user interacts with notifications:
+const handleNotificationClick = (notificationId: string) => {
+  const notificationService = NotificationService.getInstance();
+  notificationService.recordNotificationInteraction(notificationId, 'acted');
+};
 
   // Enhanced screen transition with haptic feedback
   const handleScreenChange = useCallback(
